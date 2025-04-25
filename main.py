@@ -3,15 +3,19 @@ from selenium import webdriver
 # from selenium_recaptcha_solver import RecaptchaSolver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium_recaptcha_solver import RecaptchaSolver
 import time
 import json
+import os
+import platform
 from typing import Dict, List
 from utils import generate_html_from_string
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import ElementClickInterceptedException
 import logging
+from selenium.common.exceptions import NoSuchElementException
 
 # 1. HOW TO RECAPTCHA
 # 2. HOW TO SELECT LEVEL WHICH AVAILABLE (CHENG RECOMMEND B OVER A)
@@ -27,7 +31,20 @@ def get_user_json()->Dict:
 
 def get_driver(profile="anonymous"):
     # Anonymous can be Default, Profile 1
-    driver_path = r'C:\Program Files (x86)\chromedriver-win64\chromedriver.exe'
+    # driver_path = r'C:\Program Files (x86)\chromedriver-win64\chromedriver.exe'
+    # driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
+
+    system = platform.system()
+
+     # 自动设置 Chrome 驱动路径
+    if system == "Windows":
+        driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
+        chrome_user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+    elif system == "Darwin":
+        driver_path = "/Applications/chromedriver"  # 或你实际的 chromedriver 路径
+        chrome_user_data_path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+    else:
+        raise RuntimeError("当前系统不受支持（仅支持 Windows 和 macOS）")
     
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
@@ -35,14 +52,25 @@ def get_driver(profile="anonymous"):
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument("start-maximized")
     if profile != "anonymous":
-        options.add_argument(r'--user-data-dir=C:\Users\Wallik\AppData\Local\Google\Chrome\User Data');
+        # options.add_argument(r'--user-data-dir=C:\Users\Administrator\AppData\Local\Google\Chrome\User Data');
+        options.add_argument(f"--user-data-dir={chrome_user_data_path}")
         options.add_argument(f"--profile-directory={profile}")
-        
-    driver = webdriver.Chrome(driver_path, options=options)
+    
+    service = Service(executable_path=driver_path)
+    driver = webdriver.Chrome(service=service, options=options)
     return driver
 
 def get_all_child_element(parent_element):
     return parent_element.find_elements(By.XPATH,".//*")
+
+def handle_cookie_popup(driver):
+    try:
+        accept_all_button = driver.find_element(By.CSS_SELECTOR, ".cc-btn.cc-allow")
+        accept_all_button.click()
+        print("已点击 cookie 同意按钮。")
+    except Exception as e:
+        print("未发现 cookie 弹窗，跳过处理。")
+
 
 def make_login(driver, recaptcha_solver, data:Dict):
     """Login from the allticket.com page
@@ -132,11 +160,15 @@ def main():
     # Read and Agree the condition
     generate_html_from_string(driver.page_source)
 
-    accept_consent_checkbox = driver.find_element(By.CSS_SELECTOR, "label[for='acceptConsent']")
-    accept_consent_checkbox.click()
+    try:
+        accept_consent_checkbox = driver.find_element(By.CSS_SELECTOR, "label[for='acceptConsent']")
+        accept_consent_checkbox.click()
 
-    confirm_button = driver.find_element(By.XPATH, "//span[text()=' Confirm ']/parent::*")
-    confirm_button.click()
+        confirm_button = driver.find_element(By.XPATH, "//span[text()=' Confirm ']/parent::*")
+        confirm_button.click()
+        print("同意协议并点击确认按钮。")
+    except Exception as e:
+        print("未发现同意协议的勾选框和按钮，跳过。")
 
     # Land to reserve page as Some concerts have more than 1 time, they will ask before to check seat available
     # TODO : If the confirmed button is still not done, then, it is possible that the popup window will be shown, Click yes to wait for a few minute
@@ -154,6 +186,8 @@ def main():
     check_seat_available_button_xpath = "//button[contains(text(),'CHECK SEAT AVAILABLE')]"
     check_seat_available_button = wait.until(EC.presence_of_element_located((By.XPATH, check_seat_available_button_xpath)))
     check_seat_available_button.click()
+
+    handle_cookie_popup(driver)
 
     # Now, all seats from each zone is being shown
 
@@ -189,6 +223,11 @@ def main():
 
     booking_button = driver.find_element(By.XPATH,"//span[contains(text(), 'Booking')]/parent::button")
     booking_button.click()
+
+    print("✅ 已点击预订按钮，程序将在付款页停留，请手动付款。")
+
+    input("🛑 手动付款完成后请按 Enter 关闭程序和浏览器...")
+    return
 
     # Now, looking for App summary
     wait = WebDriverWait(driver, 30)
