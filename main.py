@@ -35,13 +35,16 @@ def get_driver(profile="anonymous"):
     # driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
 
     system = platform.system()
+    print(profile)
 
      # 自动设置 Chrome 驱动路径
     if system == "Windows":
         driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
         chrome_user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
     elif system == "Darwin":
-        driver_path = "/Applications/chromedriver"  # 或你实际的 chromedriver 路径
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        print(project_root)
+        driver_path = os.path.join(project_root,"chromedriver-mac-arm64","chromedriver")
         chrome_user_data_path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
     else:
         raise RuntimeError("当前系统不受支持（仅支持 Windows 和 macOS）")
@@ -65,8 +68,13 @@ def get_all_child_element(parent_element):
 
 def handle_cookie_popup(driver):
     try:
-        accept_all_button = driver.find_element(By.CSS_SELECTOR, ".cc-btn.cc-allow")
-        accept_all_button.click()
+        # accept_all_button = driver.find_element(By.CSS_SELECTOR, ".cc-btn.cc-allow")
+        # accept_all_button.click()
+        # print("已点击 cookie 同意按钮。")
+        allow_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.CLASS_NAME, "cc-allow"))
+        )
+        allow_button.click()
         print("已点击 cookie 同意按钮。")
     except Exception as e:
         print("未发现 cookie 弹窗，跳过处理。")
@@ -173,6 +181,8 @@ def main():
     # Land to reserve page as Some concerts have more than 1 time, they will ask before to check seat available
     # TODO : If the confirmed button is still not done, then, it is possible that the popup window will be shown, Click yes to wait for a few minute
 
+    handle_cookie_popup(driver)
+
     time_index = data.get("time_index")
     if time_index:
         # Assume that there is time_index if it was provided
@@ -186,8 +196,6 @@ def main():
     check_seat_available_button_xpath = "//button[contains(text(),'CHECK SEAT AVAILABLE')]"
     check_seat_available_button = wait.until(EC.presence_of_element_located((By.XPATH, check_seat_available_button_xpath)))
     check_seat_available_button.click()
-
-    handle_cookie_popup(driver)
 
     # Now, all seats from each zone is being shown
 
@@ -211,6 +219,13 @@ def main():
     # Start by iterating in these seat type
     for prior_seat_type in prior_seat_types:
         seat_ava_prior_map_element = seat_ava_map_element.find_element(By.XPATH, f'.//*[@class="p_{prior_seat_type}"]')
+        # 尝试隐藏遮挡元素
+        try:
+            h3_overlay = driver.find_element(By.CSS_SELECTOR, "h3.is-size-5.font-weight-bold")
+            driver.execute_script("arguments[0].style.display='none';", h3_overlay)
+            print("已隐藏 h3 遮挡元素")
+        except:
+            print("未找到 h3 遮挡元素，跳过")
         seat_ava_prior_map_element.click()
 
 
