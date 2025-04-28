@@ -1,5 +1,6 @@
 {
-    "chrome_profile": "Profile 8",
+    "browser": "chrome",
+    "profile": "Profile 8",
     "event_name": "&Teamconcerttourthebloodlineinbangkok",
     "prior_seat_types": [
         "VL2"

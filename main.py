@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium_recaptcha_solver import RecaptchaSolver
+from selenium.webdriver.edge.options import Options as EdgeOptions
 import time
 import json
 import os
@@ -29,38 +30,60 @@ def get_user_json()->Dict:
         data = json.load(f)
     return data
 
-def get_driver(profile="anonymous"):
+def get_driver(profile="anonymous", browser="chrome"):
     # Anonymous can be Default, Profile 1
     # driver_path = r'C:\Program Files (x86)\chromedriver-win64\chromedriver.exe'
     # driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
 
     system = platform.system()
-    print(profile)
+    print(f"Profile: {profile}, Browser: {browser}")
 
      # 自动设置 Chrome 驱动路径
     if system == "Windows":
-        driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
+        chrome_driver_path = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
         chrome_user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+
+        edge_driver_path = r'D:\myprojects\MyPython\allticket-bot\msedgedriver.exe'
+        edge_user_data_path = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data")
     elif system == "Darwin":
         project_root = os.path.dirname(os.path.abspath(__file__))
         print(project_root)
-        driver_path = os.path.join(project_root,"chromedriver-mac-arm64","chromedriver")
+        chrome_driver_path = os.path.join(project_root,"chromedriver-mac-arm64","chromedriver")
         chrome_user_data_path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+
+        edge_driver_path = os.path.join(project_root, "msedgedriver-mac-arm64", "msedgedriver")
+        edge_user_data_path = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
     else:
         raise RuntimeError("当前系统不受支持（仅支持 Windows 和 macOS）")
     
-    options = webdriver.ChromeOptions()
+    if browser == "chrome":
+        options = webdriver.ChromeOptions()
+        driver_path = chrome_driver_path
+        user_data_path = chrome_user_data_path
+    elif browser == "edge":
+        options = EdgeOptions()
+        driver_path = edge_driver_path
+        user_data_path = edge_user_data_path
+    else: 
+        raise ValueError("browser 参数只能是 'chrome' 或 'edge'")
+    
+    # options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument("--disable-extensions")
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument("start-maximized")
     if profile != "anonymous":
         # options.add_argument(r'--user-data-dir=C:\Users\Administrator\AppData\Local\Google\Chrome\User Data');
-        options.add_argument(f"--user-data-dir={chrome_user_data_path}")
+        options.add_argument(f"--user-data-dir={user_data_path}")
         options.add_argument(f"--profile-directory={profile}")
     
     service = Service(executable_path=driver_path)
-    driver = webdriver.Chrome(service=service, options=options)
+
+    if browser == "chrome":
+        driver = webdriver.Chrome(service=service, options=options)
+    elif browser == "edge":
+        driver = webdriver.Edge(service=service, options=options)
+   
     return driver
 
 def get_all_child_element(parent_element):
@@ -147,11 +170,13 @@ def main():
     data = get_user_json()
     
     # Avoid RECAPTCHA By logging in Google Profile
-    chrome_profile = data["chrome_profile"]
+    profile = data["profile"]
     event_name = data['event_name']
     prior_seat_types = data.get("prior_seat_types",[])
     payment_method = data.get("payment_method","cash")
-    driver = get_driver(profile=chrome_profile)
+    browser = data.get("browser", "chrome")
+
+    driver = get_driver(profile=profile, browser=browser)
     
     # Setup the common wait
     wait = WebDriverWait(driver, 10)
@@ -162,8 +187,30 @@ def main():
     driver.get(event_url)
 
     # Start
-    buy_button = driver.find_element(By.XPATH,"/html/body/app-root/app-event-info/div/div[2]/div[2]/div/div[5]/div/button")
-    buy_button.click()
+    # buy_button = driver.find_element(By.XPATH,"/html/body/app-root/app-event-info/div/div[2]/div[2]/div/div[5]/div/button")
+    # buy_button.click()
+    buy_button_xpath = "/html/body/app-root/app-event-info/div/div[2]/div[2]/div/div[5]/div/button"
+    while True:
+        try:
+            buy_button = driver.find_element(By.XPATH, buy_button_xpath)
+            button_text = buy_button.text.strip().upper()
+
+            if button_text == "BUY NOW":
+                print("🎯 检测到 BUY NOW 按钮，开始购票流程。")
+                buy_button.click()
+                break
+            elif button_text == "COMING SOON":
+                print("⏳ 仍然是 COMING SOON，3秒后刷新页面继续等待...")
+                time.sleep(3)
+                driver.refresh()
+            else:
+                print(f"⚠️ 检测到未知按钮：{button_text}，3秒后刷新...")
+                time.sleep(3)
+                driver.refresh()
+        except Exception as e:
+            print(f"⚠️ 检测按钮失败：{e}，3秒后刷新...")
+            time.sleep(3)
+            driver.refresh()
 
     # Read and Agree the condition
     generate_html_from_string(driver.page_source)
