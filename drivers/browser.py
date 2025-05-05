@@ -7,13 +7,17 @@ def get_driver(profile="anonymous", browser="chrome"):
     if browser == "chrome":
         options = webdriver.ChromeOptions()
         driver_path = CHROME_DRIVER_PATH
-        user_data_path = CHROME_USER_DATA_PATH
+        user_data_path = CUSTOM_CHROME_USER_DATA_PATH
     elif browser == "edge":
         options = EdgeOptions()
         driver_path = EDGE_DRIVER_PATH
         user_data_path = EDGE_USER_DATA_PATH
     else:
         raise ValueError("browser 参数只能是 'chrome' 或 'edge'")
+    
+    print(driver_path)
+    print(user_data_path)
+    print(profile)
 
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument("--disable-extensions")

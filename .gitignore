@@ -2,6 +2,8 @@ user.json
 /Profile 8
 /chromedriver-win64
 /chromedriver-mac-arm64
+/edgedriver_win64
+/profile
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

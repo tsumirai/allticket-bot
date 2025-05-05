@@ -5,8 +5,9 @@ SYSTEM = platform.system()
 
 if SYSTEM == "Windows":
     CHROME_DRIVER_PATH = r'D:\myprojects\MyPython\allticket-bot\chromedriver-win64\chromedriver.exe'
-    EDGE_DRIVER_PATH = r'D:\myprojects\MyPython\allticket-bot\msedgedriver.exe'
-    CHROME_USER_DATA_PATH = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+    EDGE_DRIVER_PATH = r'D:\myprojects\MyPython\allticket-bot\edgedriver_win64\msedgedriver.exe'
+    # CHROME_USER_DATA_PATH = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+    CUSTOM_CHROME_USER_DATA_PATH = r"D:\myprojects\MyPython\allticket-bot\profile"
     EDGE_USER_DATA_PATH = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data")
 elif SYSTEM == "Darwin":
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

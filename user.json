@@ -1,9 +1,10 @@
 {
     "browser": "chrome",
-    "profile": "Profile 8",
+    "chrome_profile": "Profile 8",
+    "edge_profile": "Default",
     "event_name": "&Teamconcerttourthebloodlineinbangkok",
     "prior_seat_types": [
-        "VL2"
+        "AL"
     ],
     "payment_method" : "cash"
 }
